@@ -5,263 +5,6 @@ from copy import copy
 import numpy as np
 from scipy.spatial import ConvexHull
 
-TEST_DIMENSIONS = 10
-
-class TestSpatialAudio(unittest.TestCase):
-    def test_create_spatialaudio(self):
-        a = SpatialAudio()
-
-    def test_coordinates(self):
-        a = SpatialAudio()
-        a.coordinates = Coordinates()
-class TestAudio(unittest.TestCase):
-    def test_Audio(self):
-        a = Audio()
-        
-    def test_Audio_equal(self):
-        a = Audio()
-        a.time = np.random.rand(TEST_DIMENSIONS)
-        b = Audio()
-        b.freq = a.freq
-        assert np.allclose(a.time, b.time)
-    def test_timeVector_even(self):
-        a = Audio()
-        a.time = np.random.rand(10)
-        a.samplingRate = 10
-        assert np.allclose(a.timeVector, np.linspace(0,1,10,endpoint=False))
-    def test_timeVector_odd(self):
-        a = Audio()
-        a.time = np.random.rand(11)
-        a.samplingRate = 10
-        assert np.allclose(a.timeVector, np.linspace(0,1.1,11,endpoint=False))
-    def test_freqVector_even(self):
-        a = Audio()
-        a.time = np.random.rand(10)
-        a.samplingRate = 10
-        assert np.allclose(a.freqVector, np.linspace(0,5,6,endpoint=True))
-    def test_freqVector_odd(self):
-        a = Audio()
-        a.time = np.random.rand(11)
-        a.samplingRate = 10
-        assert np.allclose(a.freqVector, np.linspace(0,5.5,6,endpoint=False))
-    def test_get_time(self):
-        a = Audio()
-        a.time = np.random.rand(10)
-        a.samplingRate = 10
-        print a.get_time(0.5)
-        assert np.allclose(a.get_time(0.5), a.time[5])
-    def test_get_freq(self):
-        a = Audio()
-        a.time = np.random.rand(10)
-        a.sync()
-        a.samplingRate = 10
-        assert np.allclose(a.get_freq(3.), a.freq[3])
-        
-class TestFFT(unittest.TestCase):
-    def test_fft(self):
-        a = Time()
-        a.data = np.random.rand(TEST_DIMENSIONS)
-        a2 = a.fft()
-        # assert type(a2) == Freq  # works only in python3
-    def test_fft_lengths(self):
-        a = Time()
-        a.data = np.random.rand(TEST_DIMENSIONS)
-        b = a.fft()
-
-    def test_fft_even(self):
-        a = Time()
-        a.data = np.random.rand(TEST_DIMENSIONS)
-        print(a.nSamples)
-        c = a.fft()
-        print(c.nSamples)
-        b = a.fft().ifft()
-        assert np.allclose(a.data, b.data)
-
-    def test_fft_odd(self):
-        a = Time()
-        a.data = np.random.rand(TEST_DIMENSIONS + 1)
-        b = a.fft().ifft()
-        assert np.allclose(a.data, b.data)
-
-    def test_fft_power_even(self):
-        a = Time()
-        a.fft = a.fft_power
-        a.data = np.random.rand(TEST_DIMENSIONS)
-        b = a.fft().ifft()
-        assert np.allclose(a.data, b.data)
-    
-    
-    def test_fft_power_odd(self):
-        a = Time()
-        a.fft = a.fft_power
-        a.data = np.random.rand(TEST_DIMENSIONS + 1)
-        b = a.fft().ifft()
-        assert np.allclose(a.data, b.data)
-    
-    
-        
-    def test_sync_time(self):
-        a = Audio()
-        a.time = np.random.rand(TEST_DIMENSIONS)
-        assert a._isValidTime
-        a.sync()
-        assert a._isValidFreq and a._isValidTime
-    def test_sync_freq(self):
-        a = Audio()
-        a.freq = np.random.rand(TEST_DIMENSIONS/2 + 1)
-        assert a._isValidFreq
-        a.sync()
-        assert a._isValidTime and a._isValidFreq
-class TestTimeFreq(unittest.TestCase):
-    def test_timeObj(self):
-        a = Time()
-    def test_freqObj(self):
-        a = Freq()
-
-    def test_timeObj_data(self):
-        a = Time()
-        t = np.random.rand(TEST_DIMENSIONS)
-        a.data = t
-        assert (a.data == t).all()
-
-    def test_freqObj_data(self):
-        a = Freq()
-        f = np.random.rand(TEST_DIMENSIONS)
-        a.data = f
-        assert (a.data == f).all()
-
-    def test_timeObj_nSamples(self):
-        a = Time()
-        a.data = np.random.rand(TEST_DIMENSIONS)
-        assert a.nSamples == TEST_DIMENSIONS
-
-
-                
-        
-class TestTransform(unittest.TestCase):
-    def test_transforms(self):
-        x1, y1, z1 = np.random.randn(3)
-        x2, y2, z2 = spherical_to_cartesian(*cartesian_to_spherical(x1, y1, z1))
-        self.assertAlmostEqual(x1, x2)
-        self.assertAlmostEqual(y1, y2)
-        self.assertAlmostEqual(z1, z2)
-        
-class TestCoordinates(unittest.TestCase):
-    
-    def test_createInstance(self):
-        c = Coordinates()
-
-    def test_parse_input_as_cart(self):
-        random = np.random.randn(10, 3)
-        c = Coordinates(random)
-        assert np.allclose(c.cart, random)
-
-
-    def test_shape(self):
-        c = Coordinates()
-        c.cart = np.random.rand(10, 3)
-        assert c.cart.shape == (10, 3)
-
-    def test_shape_sph(self):
-        c = Coordinates()
-        c.cart = np.random.rand(10, 3)
-        assert c.sph.shape == (10, 3)
-
-
-    def test_shape_x(self):
-        c = Coordinates()
-        c.cart = np.random.rand(10, 3)
-        assert c.x.shape == (10,)
-
-
-    def test_xyz(self):
-        c = Coordinates()
-        c.cart = np.random.rand(10, 3)
-        cart = np.column_stack((c.x, c.y, c.z))
-        assert np.allclose(cart, c.cart)
-
-
-    def test_writeCart(self):
-        c = Coordinates()
-        tmp = np.random.rand(10, 3)
-        c.cart = tmp
-        a, b = 5, 2
-        assert c.cart[a,b] == tmp[a, b]
-
-
-    def test_transform(self):
-        c = Coordinates()
-        tmp = np.random.rand(10, 3)
-        c.cart = tmp
-        sph = c.sph
-        c.sph = sph
-        a, b = 4, 0
-        self.assertAlmostEqual(c.cart[a, b], tmp[a, b])
-
-
-    def test_conversions_r(self):
-        c = Coordinates()
-        c.cart = np.random.rand(10, 3)
-        r_squared = (c.cart**2).sum(axis=1)
-        assert np.allclose(c.r**2, r_squared)
-
-
-    def test_clone_data(self):
-        c = Coordinates(np.random.randn(20, 3))
-        c2 = Coordinates(c.cart)
-        c.r += 10
-        assert np.allclose(c.r, c2.r + 10)
-
-
-    def test_phi_correct_conventions(self):
-        c = Coordinates(np.random.randn(20, 3))
-        test = np.all(0 <= c.phi) and np.all(c.phi < 2*np.pi)
-        assert test
-
-
-    def test_calculate_with_single_numbers(self):
-        c = Coordinates(np.random.randn(5, 3))
-        x = c.x
-        print x
-        c.r = c.r * 2
-        print 2*x
-        print c.x 
-        assert np.allclose(2*x, c.x)
-
-
-    def test_new_size_cart(self):
-        c = Coordinates(np.random.randn(5, 3))
-        c.cart = np.concatenate((c.cart,c.cart))
-
-
-    def test_new_size_sph(self):
-        c = Coordinates(np.random.randn(5, 3))
-        c.sph = np.concatenate((c.sph,c.sph))
-
-    def test_import_list_of_points(self):
-        points = [[0,1,0],[1,1,1],[-1,-1,0],[-1,0,0]]
-        c = Coordinates(points)
-
-    def test_get_nPoints(self):
-        c = Coordinates(np.random.randn(5, 3))
-        n = c.nPoints
-        assert n == 5
-
-    def test_convex_hull(self):
-        # h5 = AudioHDF5
-        # from itaCoordinates import Coordinates
-        c = Coordinates([[1,0,0],[0,1,0],[0,0,1],[-1,0,0],[0,-1,0],[0,0,-1]])
-        c.update_simplices()
-        assert c.simplices.shape == (8,3)
-
-    # def test_wrong_input():
-    #     # todo
-    #     pass
-
-    def test_input_cart(self):
-        pass
-
-
 def cartesian_to_spherical(x, y, z, degrees=False):
     xsq, ysq, zsq = x*x, y*y, z*z
     r = (xsq + ysq + zsq)**0.5
@@ -452,7 +195,7 @@ class Time(object):
         
     @property
     def nBins(self):
-        return (self.nSamples / 2) + 1
+        return (self.nSamples // 2) + 1
 
     @property
     def timeVector(self):
@@ -460,7 +203,7 @@ class Time(object):
             # even samples
             return np.linspace(0, self.samplingRate/2., self.nBins)
         else:
-            print 'check me: odd nr of samples, freqVector'
+            # 'check me: odd nr of samples, freqVector'
             return np.linspace(0, self.samplingRate/2. * (1 - 1/(2.*self.nBins)), self.nBins)
     def fft(self):
         return self.fft_energy()
@@ -562,7 +305,7 @@ class Audio(object):
             
     @time.setter
     def time(self, data):
-        self._timeObj.data = data
+        self._timeObj.data = np.array(data)
         self._isValidTime = True
         self._isValidFreq = False
         
@@ -575,7 +318,7 @@ class Audio(object):
         return self._freqObj.data
     @freq.setter
     def freq(self, data):
-        self._freqObj.data = data
+        self._freqObj.data = np.array(data)
         self._isValidFreq = True
         self._isValidTime = False
     
@@ -596,6 +339,33 @@ class Audio(object):
         if self._isValidTime:
             return np.linspace(0, self._timeObj.nSamples / self.samplingRate, self._timeObj.nSamples, endpoint=False)
 
+    @property
+    def nSamples(self):
+        n = [0]  # default
+        if self._isValidTime:
+            n.append(self._timeObj.nSamples)
+        if self._isValidFreq:
+            n.append(self._freqObj.nSamples)
+        if n.__len__() == 3:
+            # checks for identical results, independent of domain
+            assert n[1] == n[2]
+            return n[1]
+        n = n[::-1]  # revert list
+        return int(n[0]) # use first entry (nBins or 0)
+    @property
+    def nBins(self):
+        n = [0]  # default
+        if self._isValidTime:
+            n.append(self._timeObj.nBins)
+        if self._isValidFreq:
+            n.append(self._freqObj.nBins)
+        if n.__len__() == 3:
+            # checks for identical results, independent of domain
+            assert n[1] == n[2]
+            return n[1]
+        n = n[::-1]  # revert list
+        return int(n[0]) # use first entry (nBins or 0)
+        
     def get_time(self, time):
         index = np.argmin(np.abs(self.timeVector - time))
         return self.time[...,index]
@@ -606,14 +376,285 @@ class Audio(object):
 
 
 class SpatialAudio(Audio):
-    _coordinates = Coordinates()
-    name = 'Description of the data'
+    coordinates = Coordinates()
     
-    @property
-    def coordinates(self):
-        return self._coordinates
-    @coordinates.setter
-    def coordinates(self, value):
-        self._coordinates = value
-        self._coordinates.update_simplices()
+    # @property
+    # def coordinates(self):
+    #     return self._coordinates
+    # @coordinates.setter
+    # def coordinates(self, value):
+    #     self._coordinates = value
+    #     self._coordinates.update_simplices()
 
+## TEST FUNCTIONS
+
+TEST_DIMENSIONS = 10
+class TestSpatialAudio(unittest.TestCase):
+    def test_create_spatialaudio(self):
+        a = SpatialAudio()
+
+    def test_coordinates(self):
+        a = SpatialAudio()
+        a.coordinates = Coordinates()
+class TestAudio(unittest.TestCase):
+    def test_Audio(self):
+        a = Audio()
+        
+    def test_Audio_equal(self):
+        a = Audio()
+        a.time = np.random.rand(TEST_DIMENSIONS)
+        b = Audio()
+        b.time = a.time
+        assert np.allclose(a.freq, b.freq)
+        
+    def test_timeVector_even(self):
+        a = Audio()
+        a.time = np.random.rand(10)
+        a.samplingRate = 10
+        assert np.allclose(a.timeVector, np.linspace(0,1,10,endpoint=False))
+    def test_timeVector_odd(self):
+        a = Audio()
+        a.time = np.random.rand(11)
+        a.samplingRate = 10
+        assert np.allclose(a.timeVector, np.linspace(0,1.1,11,endpoint=False))
+    def test_freqVector_even(self):
+        a = Audio()
+        a.time = np.random.rand(10)
+        a.samplingRate = 10
+        assert np.allclose(a.freqVector, np.linspace(0,5,6,endpoint=True))
+    def test_freqVector_odd(self):
+        a = Audio()
+        a.time = np.random.rand(11)
+        a.samplingRate = 10
+        assert np.allclose(a.freqVector, np.linspace(0,5.5,6,endpoint=False))
+    def test_get_time(self):
+        a = Audio()
+        a.time = np.random.rand(10)
+        a.samplingRate = 10
+        assert np.allclose(a.get_time(0.5), a.time[5])
+    def test_get_freq(self):
+        a = Audio()
+        a.time = np.random.rand(10)
+        a.sync()
+        a.samplingRate = 10
+        assert np.allclose(a.get_freq(3.), a.freq[3])
+        
+class TestFFT(unittest.TestCase):
+    def test_fft(self):
+        a = Time()
+        a.data = np.random.rand(TEST_DIMENSIONS)
+        a2 = a.fft()
+        # assert type(a2) == Freq  # works only in python3
+    def test_fft_lengths(self):
+        a = Time()
+        a.data = np.random.rand(TEST_DIMENSIONS)
+        b = a.fft()
+
+    def test_fft_even(self):
+        a = Time()
+        a.data = np.random.rand(TEST_DIMENSIONS)
+        c = a.fft()
+        b = a.fft().ifft()
+        assert np.allclose(a.data, b.data)
+
+    def test_fft_odd(self):
+        a = Time()
+        a.data = np.random.rand(TEST_DIMENSIONS + 1)
+        b = a.fft().ifft()
+        assert np.allclose(a.data, b.data)
+
+    def test_fft_power_even(self):
+        a = Time()
+        a.fft = a.fft_power
+        a.data = np.random.rand(TEST_DIMENSIONS)
+        b = a.fft().ifft()
+        assert np.allclose(a.data, b.data)
+    
+    
+    def test_fft_power_odd(self):
+        a = Time()
+        a.fft = a.fft_power
+        a.data = np.random.rand(TEST_DIMENSIONS + 1)
+        b = a.fft().ifft()
+        assert np.allclose(a.data, b.data)
+    
+    
+        
+    def test_sync_time(self):
+        a = Audio()
+        a.time = np.random.rand(TEST_DIMENSIONS)
+        assert a._isValidTime
+        a.sync()
+        assert a._isValidFreq and a._isValidTime
+    def test_sync_freq(self):
+        a = Audio()
+        a.freq = np.random.rand(TEST_DIMENSIONS/2 + 1)
+        assert a._isValidFreq
+        a.sync()
+        assert a._isValidTime and a._isValidFreq
+class TestTimeFreq(unittest.TestCase):
+    def test_timeObj(self):
+        a = Time()
+    def test_freqObj(self):
+        a = Freq()
+
+    def test_timeObj_data(self):
+        a = Time()
+        t = np.random.rand(TEST_DIMENSIONS)
+        a.data = t
+        assert (a.data == t).all()
+
+    def test_freqObj_data(self):
+        a = Freq()
+        f = np.random.rand(TEST_DIMENSIONS)
+        a.data = f
+        assert (a.data == f).all()
+
+    def test_timeObj_nSamples(self):
+        a = Time()
+        a.data = np.random.rand(TEST_DIMENSIONS)
+        assert a.nSamples == TEST_DIMENSIONS
+
+    def test_timeObj_nBins(self):
+        a = Time()
+        a.data = np.random.rand(TEST_DIMENSIONS)
+        target = TEST_DIMENSIONS // 2 + 1
+        assert a.nBins == target
+                
+    def test_freqObj_nSamples(self):
+        a = Freq()
+        a.data = np.random.rand(TEST_DIMENSIONS)
+        target = (TEST_DIMENSIONS - 1) * 2
+        if not a._isEvenTimeDomain:
+            target += 1
+        assert a.nSamples == target
+
+    def test_freqObj_nBins(self):
+        a = Freq()
+        a.data = np.random.rand(TEST_DIMENSIONS)
+        target = TEST_DIMENSIONS
+        assert a.nBins == target
+                
+        
+class TestTransform(unittest.TestCase):
+    def test_transforms(self):
+        x1, y1, z1 = np.random.randn(3)
+        x2, y2, z2 = spherical_to_cartesian(*cartesian_to_spherical(x1, y1, z1))
+        self.assertAlmostEqual(x1, x2)
+        self.assertAlmostEqual(y1, y2)
+        self.assertAlmostEqual(z1, z2)
+        
+class TestCoordinates(unittest.TestCase):
+    
+    def test_createInstance(self):
+        c = Coordinates()
+
+    def test_parse_input_as_cart(self):
+        random = np.random.randn(10, 3)
+        c = Coordinates(random)
+        assert np.allclose(c.cart, random)
+
+
+    def test_shape(self):
+        c = Coordinates()
+        c.cart = np.random.rand(10, 3)
+        assert c.cart.shape == (10, 3)
+
+    def test_shape_sph(self):
+        c = Coordinates()
+        c.cart = np.random.rand(10, 3)
+        assert c.sph.shape == (10, 3)
+
+
+    def test_shape_x(self):
+        c = Coordinates()
+        c.cart = np.random.rand(10, 3)
+        assert c.x.shape == (10,)
+
+
+    def test_xyz(self):
+        c = Coordinates()
+        c.cart = np.random.rand(10, 3)
+        cart = np.column_stack((c.x, c.y, c.z))
+        assert np.allclose(cart, c.cart)
+
+
+    def test_writeCart(self):
+        c = Coordinates()
+        tmp = np.random.rand(10, 3)
+        c.cart = tmp
+        a, b = 5, 2
+        assert c.cart[a,b] == tmp[a, b]
+
+
+    def test_transform(self):
+        c = Coordinates()
+        tmp = np.random.rand(10, 3)
+        c.cart = tmp
+        sph = c.sph
+        c.sph = sph
+        a, b = 4, 0
+        self.assertAlmostEqual(c.cart[a, b], tmp[a, b])
+
+
+    def test_conversions_r(self):
+        c = Coordinates()
+        c.cart = np.random.rand(10, 3)
+        r_squared = (c.cart**2).sum(axis=1)
+        assert np.allclose(c.r**2, r_squared)
+
+
+    def test_clone_data(self):
+        c = Coordinates(np.random.randn(20, 3))
+        c2 = Coordinates(c.cart)
+        c.r += 10
+        assert np.allclose(c.r, c2.r + 10)
+
+
+    def test_phi_correct_conventions(self):
+        c = Coordinates(np.random.randn(20, 3))
+        test = np.all(0 <= c.phi) and np.all(c.phi < 2*np.pi)
+        assert test
+
+
+    def test_calculate_with_single_numbers(self):
+        c = Coordinates(np.random.randn(5, 3))
+        x = c.x
+        c.r = c.r * 2
+        assert np.allclose(2*x, c.x)
+
+
+    def test_new_size_cart(self):
+        c = Coordinates(np.random.randn(5, 3))
+        c.cart = np.concatenate((c.cart,c.cart))
+
+
+    def test_new_size_sph(self):
+        c = Coordinates(np.random.randn(5, 3))
+        c.sph = np.concatenate((c.sph,c.sph))
+
+    def test_import_list_of_points(self):
+        points = [[0,1,0],[1,1,1],[-1,-1,0],[-1,0,0]]
+        c = Coordinates(points)
+
+    def test_get_nPoints(self):
+        c = Coordinates(np.random.randn(5, 3))
+        n = c.nPoints
+        assert n == 5
+
+    def test_convex_hull(self):
+        # h5 = AudioHDF5
+        # from itaCoordinates import Coordinates
+        c = Coordinates([[1,0,0],[0,1,0],[0,0,1],[-1,0,0],[0,-1,0],[0,0,-1]])
+        c.update_simplices()
+        assert c.simplices.shape == (8,3)
+
+    # def test_wrong_input():
+    #     # todo
+    #     pass
+
+    def test_input_cart(self):
+        pass
+
+if __name__ == '__main__':
+    unittest.main()
