@@ -295,12 +295,16 @@ class Audio(object):
             self._isValidFreq = True
             
     @property
-    def time(self, *args, **kwargs):
+    def time(self):
         if not self._isValidTime:
             if self._isValidFreq:
                 self._timeObj = self._freqObj.ifft()
-                self._isValidTime = True
-        return self.get_time(*args, **kwargs)            
+                self._isValidTime = True        
+        # index = self._calculate_index(*args, domain='t', **kwargs)
+        # print 'timeindex'
+        # print index
+        # return self.get_time(index)
+        return self.get_time()            
     @time.setter
     def time(self, data):
         self._timeObj.data = np.array(data)
@@ -308,12 +312,16 @@ class Audio(object):
         self._isValidFreq = False
         
     @property
-    def freq(self, *args, **kwargs):
+    def freq(self):
         if not self._isValidFreq:
             if self._isValidTime:
                 self._freqObj = self._timeObj.fft()
                 self._isValidFreq = True
-        return self.get_freq(*args, **kwargs)
+        # index = self._calculate_index(*args, domain='f', **kwargs)
+        # print 'freqindex'
+        # print index
+        # return self.get_freq(index)
+        return self.get_freq()
     @freq.setter
     def freq(self, data):
         self._freqObj.data = np.array(data)
@@ -366,48 +374,59 @@ class Audio(object):
 
         
     def get_time(self, *args, **kwargs):
-        index = Ellipsis
-        try:
-            index = np.argmin(np.abs(self.timeVector - args[0]))
-        except:
-            try:
-                index = np.argmin(np.abs(self.timeVector - kwargs['t']))
-            except:
-                pass
-        return self._timeObj.data[...,index]
-
+        index = self._calculate_index(*args, domain='t', **kwargs)
+        return self._timeObj.data[index]
+        
     def get_freq(self, *args, **kwargs):
-        index = Ellipsis
+        index = self._calculate_index(*args, domain='f', **kwargs)
+        return self._freqObj.data[index]
+        
+    def _calculate_index_time(self, *args, **kwargs):
         try:
-            index = np.argmin(np.abs(self.freqVector - args[0]))
+            t = kwargs['t']
         except:
             try:
-                index = np.argmin(np.abs(self.freqVector - kwargs['f']))
+                t = args[0]
             except:
-                pass
-        return self._freqObj.data[...,index]
+                return [Ellipsis]
+        return [np.argmin(np.abs(self.timeVector - t))]
 
-    
-
-
-class SpatialAudio(Audio):
-    coordinates = Coordinates()
-
-    def get_time(self, *args, **kwargs):
-        time = super(SpatialAudio, self).get_time(*args, **kwargs)
+    def _calculate_index_freq(self, *args, **kwargs):
         try:
-            index = kwargs['point']
-            time = time[...,index,:]
+            f = kwargs['f']
         except:
-            pass
-            # print 'no point'
+            try:
+                f = args[0]
+            except:
+                return [Ellipsis]
+        return [np.argmin(np.abs(self.freqVector - f))]
+    
+    def _calculate_index(self, *args, **kwargs):
+        if kwargs['domain'][0] is 't':
+            index = self._calculate_index_time(*args, **kwargs)
+        elif kwargs['domain'][0] is 'f':
+            index = self._calculate_index_freq(*args, **kwargs)
+        else:
+            print 'FAIL'
         try:
-            index = kwargs['channel']
-            time = time[...,index,:,:]
+            index.insert(0, kwargs['channel'])
         except:
             pass
             # print 'no channel'
-        return time
+        index.insert(0, Ellipsis)
+        return index
+        
+class SpatialAudio(Audio):
+    coordinates = Coordinates()
+
+    def _calculate_index(self, *args, **kwargs):
+        index = super(SpatialAudio, self)._calculate_index(*args, **kwargs)
+        try:
+            index = index.insert(0, kwargs['point'])
+        except:
+            pass
+            # print 'no point'
+        return index
     
     # @property
     # def coordinates(self):
@@ -417,9 +436,38 @@ class SpatialAudio(Audio):
     #     self._coordinates = value
     #     self._coordinates.update_simplices()
 
+class SOFA_Audio(SpatialAudio):
+    
+    def __init__(self, filename):
+        import h5py
+        h5 = h5py.File(filename)
+        # [ind for ind in h5.iterkeys()]
+        self.filename = filename
+        self.samplingRate = h5['Data.SamplingRate'][:]
+        self.time = h5['Data.IR'][:]        
+        self.coordinates = self._position2coordinates(h5['SourcePosition'])
+        self.sync()
+        # vis.BalloonGUI()
+
+    def _position2coordinates(self, pos):
+        p = pos[...,0] / 180 * np.pi
+        t = (90 - pos[...,1]) / 180 * np.pi
+        r = pos[...,2]
+        c = Coordinates()
+        c.sph = np.vstack((r,t,p)).T
+        return c
+
+
 ## TEST FUNCTIONS
 
 TEST_DIMENSIONS = 10
+class TestSOFA_Audio(unittest.TestCase):
+    def test_load(self):
+        sofa = SOFA_Audio('/Volumes/Macintosh_HD/Users/pollow/Projekte/Python/audiotools/test.sofa')
+
+    def test_more(self):
+        pass
+        
 class TestSpatialAudio(unittest.TestCase):
     def test_create_spatialaudio(self):
         a = SpatialAudio()
@@ -434,7 +482,7 @@ class TestSpatialAudio(unittest.TestCase):
         a.coordinates = Coordinates()
         a.time = np.random.rand(10,5,3)
         time = a.get_time(channel=ch)
-        assert np.allclose(time, a.time[ch,:,:])
+        assert np.allclose(time, a.time[:,ch,:])
         
 class TestAudio(unittest.TestCase):
     def test_Audio(self):
