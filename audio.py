@@ -2,7 +2,6 @@ from __future__ import division
 import unittest
 import numpy as np
 from copy import copy
-import numpy as np
 from scipy.spatial import ConvexHull
 
 def cartesian_to_spherical(x, y, z, degrees=False):
@@ -296,13 +295,12 @@ class Audio(object):
             self._isValidFreq = True
             
     @property
-    def time(self):
+    def time(self, *args, **kwargs):
         if not self._isValidTime:
             if self._isValidFreq:
                 self._timeObj = self._freqObj.ifft()
                 self._isValidTime = True
-        return self._timeObj.data
-            
+        return self.get_time(*args, **kwargs)            
     @time.setter
     def time(self, data):
         self._timeObj.data = np.array(data)
@@ -310,12 +308,12 @@ class Audio(object):
         self._isValidFreq = False
         
     @property
-    def freq(self):
+    def freq(self, *args, **kwargs):
         if not self._isValidFreq:
             if self._isValidTime:
                 self._freqObj = self._timeObj.fft()
                 self._isValidFreq = True
-        return self._freqObj.data
+        return self.get_freq(*args, **kwargs)
     @freq.setter
     def freq(self, data):
         self._freqObj.data = np.array(data)
@@ -365,18 +363,51 @@ class Audio(object):
             return n[1]
         n = n[::-1]  # revert list
         return int(n[0]) # use first entry (nBins or 0)
+
         
-    def get_time(self, time):
-        index = np.argmin(np.abs(self.timeVector - time))
-        return self.time[...,index]
-        
-    def get_freq(self, freq):
-        index = np.argmin(np.abs(self.freqVector - freq))
-        return self.freq[...,index]
+    def get_time(self, *args, **kwargs):
+        index = Ellipsis
+        try:
+            index = np.argmin(np.abs(self.timeVector - args[0]))
+        except:
+            try:
+                index = np.argmin(np.abs(self.timeVector - kwargs['t']))
+            except:
+                pass
+        return self._timeObj.data[...,index]
+
+    def get_freq(self, *args, **kwargs):
+        index = Ellipsis
+        try:
+            index = np.argmin(np.abs(self.freqVector - args[0]))
+        except:
+            try:
+                index = np.argmin(np.abs(self.freqVector - kwargs['f']))
+            except:
+                pass
+        return self._freqObj.data[...,index]
+
+    
 
 
 class SpatialAudio(Audio):
     coordinates = Coordinates()
+
+    def get_time(self, *args, **kwargs):
+        time = super(SpatialAudio, self).get_time(*args, **kwargs)
+        try:
+            index = kwargs['point']
+            time = time[...,index,:]
+        except:
+            pass
+            # print 'no point'
+        try:
+            index = kwargs['channel']
+            time = time[...,index,:,:]
+        except:
+            pass
+            # print 'no channel'
+        return time
     
     # @property
     # def coordinates(self):
@@ -396,6 +427,15 @@ class TestSpatialAudio(unittest.TestCase):
     def test_coordinates(self):
         a = SpatialAudio()
         a.coordinates = Coordinates()
+    
+    def test_time_channel(self):
+        a = SpatialAudio()
+        ch = 1
+        a.coordinates = Coordinates()
+        a.time = np.random.rand(10,5,3)
+        time = a.get_time(channel=ch)
+        assert np.allclose(time, a.time[ch,:,:])
+        
 class TestAudio(unittest.TestCase):
     def test_Audio(self):
         a = Audio()
@@ -431,13 +471,13 @@ class TestAudio(unittest.TestCase):
         a = Audio()
         a.time = np.random.rand(10)
         a.samplingRate = 10
-        assert np.allclose(a.get_time(0.5), a.time[5])
+        assert np.allclose(a.get_time(t=0.5), a.time[5])
     def test_get_freq(self):
         a = Audio()
         a.time = np.random.rand(10)
         a.sync()
         a.samplingRate = 10
-        assert np.allclose(a.get_freq(3.), a.freq[3])
+        assert np.allclose(a.get_freq(f=3.), a.freq[3])
         
 class TestFFT(unittest.TestCase):
     def test_fft(self):
