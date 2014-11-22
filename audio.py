@@ -41,23 +41,6 @@ class Coordinates(object):
 
     def __init__(self, cart=np.ndarray((0,3))):
         self._cart = np.array(cart)
-    #     try:
-    #         cart = cart.cart
-    #     except:
-    #         pass
-    #
-    #     if type(cart) is 'itaCoordinates.Coordinates':
-    #         cart = cart.cart
-    #
-    #     if cart is None:
-    #         if sph is not None:
-    #             self.cart = np.zeros_like(sph)
-    #             self.sph = sph
-    #         else:
-    #             pass
-    #             # print 'no coordinate data given'
-    #     else:
-    #         self.cart = np.array(cart)
 
     def _get_cart(self):
         return self._cart
@@ -183,102 +166,90 @@ class Coordinates(object):
 
 
 class Time(object):
+    """
+    Implementation of time domain audio data.
+    """
     data = np.ndarray((0,0))
-    # samplingRate = 44100
     def _isEvenTimeDomain():
         return(not(data % 2))
-    @property
     def nSamples(self):
-        n = self.data.shape[-1]
-        return n
-        
-    @property
+        return self.data.shape[-1]
     def nBins(self):
-        return (self.nSamples // 2) + 1
+        return (self.nSamples() // 2) + 1
 
-    @property
-    def timeVector(self):
+    def timeValues(self):
         if self._isEvenTimeDomain:
-            # even samples
-            return np.linspace(0, self.samplingRate/2., self.nBins)
+            return np.linspace(0, self.samplingRate/2., self.nBins())
         else:
-            # 'check me: odd nr of samples, freqVector'
-            return np.linspace(0, self.samplingRate/2. * (1 - 1/(2.*self.nBins)), self.nBins)
+            # 'check me: odd nr of samples, freqValues'
+            return np.linspace(0, self.samplingRate/2. * (1 - 1/(2.*self.nBins())), self.nBins())
     def fft(self):
         return self.fft_energy()
 
     def fft_energy(self):
-        a = Freq()
-        a.ifft = a.ifft_energy
-        a.data = np.fft.rfft(self.data)
-        a._isEvenTimeDomain = not (self.nSamples % 2)
-        return a
+        freq = Freq()
+        if self.data.size:
+            freq.data = np.fft.rfft(self.data)        
+        freq.ifft = freq.ifft_energy
+        freq._isEvenTimeDomain = not (self.nSamples() % 2)
+        return freq
     
     def fft_power(self):
-        a = Freq()
-        a.ifft = a.ifft_power
-        a.data = np.fft.rfft(self.data) / self.nSamples
-        a.data[...,1:] *= 2**0.5
-        a.data[...,-1] /= 2
-        a._isEvenTimeDomain = not (self.nSamples % 2)
-        return a
-            
+        freq = self.fft_energy()
+        freq.ifft = freq.ifft_power
+        freq.data /= self.nSamples()
+        freq.data[...,1:] *= 2**0.5
+        freq.data[...,-1] /= 2
+        return freq
 
 
 class Freq(object):    
+    """
+    Implementation of frequency domain audio data.
+    """
     data = np.ndarray((0,0))
-    # samplingRate = 44100
     _isEvenTimeDomain = True
-    @property
     def nBins(self):
         return self.data.shape[-1]
         
-    @property
     def nSamples(self):
         if self._isEvenTimeDomain:
-            return 2 * (self.nBins - 1)
+            return 2 * (self.nBins() - 1)
         else:
-            return (2 * self.nBins - 1)
+            return (2 * self.nBins() - 1)
         
-    @property
-    def freqVector(self):
+    def freqValues(self):
         if self._isEvenTimeDomain:
             # even samples
-            return np.linspace(0, self.samplingRate/2., self.nBins)
+            return np.linspace(0, self.samplingRate/2., self.nBins())
         else:
-            print 'check me: odd nr of samples, freqVector'
-            return np.linspace(0, self.samplingRate/2. * (1 - 1/(2.*self.nBins)), self.nBins)
+            print 'check me: odd nr of samples, freqValues'
+            return np.linspace(0, self.samplingRate/2. * (1 - 1/(2.*self.nBins())), self.nBins())
     def ifft(self):
         return self.ifft_energy()
         
     def ifft_energy(self):
-        a = Time()
-        a.fft = a.fft_energy
-        a.data = np.fft.irfft(self.data, self.nSamples)
-        return a
+        time = Time()
+        if self.data.size:
+            time.data = np.fft.irfft(self.data, self.nSamples())
+        time.fft = time.fft_energy
+        return time
     
     def ifft_power(self):
-        a = Time()
-        a.fft = a.fft_power
-        f = self.data
-        f[...,1:] /= 2**0.5
-        f[...,-1] *= 2
-        a.data = np.fft.irfft(f, self.nSamples) * self.nSamples
-        return a
-    
-    def _get_freqVector(self):
-        if np.mod(self.time.shape[0],2):
-            # even samples
-            return np.linspace(0, self.samplingRate/2., self.nBins)
-        else:
-            return np.linspace(0, self.samplingRate/2. * (1 - 1/(2.*self.nBins)), self.nBins)
-            print 'check me: odd nr of samples, freqVector'
-            #return None
-    freqVector = property(_get_freqVector)
+        freq = self.data
+        freq *= self.nSamples()
+        freq[...,1:] /= 2**0.5
+        freq[...,-1] *= 2
+        time = self.ifft_energy()
+        time.fft = time.fft_power
+        return time
     
 class Audio(object):
-    
-    samplingRate = 44100.
+    """
+    This class stores audio data in time and frequency domain. The FFT or IFFT is applied as needed.
+    """
+    # samplingRate = 44100.
+    # current = 0
         
     _isValidTime = False
     _isValidFreq = False
@@ -286,7 +257,11 @@ class Audio(object):
     _timeObj = Time()
     _freqObj = Freq()
     
-    def sync(self):
+    def __init__(self):
+        self.samplingRate = 44100.
+        self.indexposition = 0
+        
+    def _sync(self):
         if not self._isValidTime and self._isValidFreq:
             self._timeObj = self._freqObj.ifft()
             self._isValidTime = True
@@ -300,141 +275,109 @@ class Audio(object):
             if self._isValidFreq:
                 self._timeObj = self._freqObj.ifft()
                 self._isValidTime = True        
-        # index = self._calculate_index(*args, domain='t', **kwargs)
-        # print 'timeindex'
-        # print index
-        # return self.get_time(index)
         return self.get_time()            
     @time.setter
     def time(self, data):
-        self._timeObj.data = np.array(data)
-        self._isValidTime = True
-        self._isValidFreq = False
-        
+        self.set_time(data)
+
     @property
     def freq(self):
         if not self._isValidFreq:
             if self._isValidTime:
                 self._freqObj = self._timeObj.fft()
                 self._isValidFreq = True
-        # index = self._calculate_index(*args, domain='f', **kwargs)
-        # print 'freqindex'
-        # print index
-        # return self.get_freq(index)
         return self.get_freq()
+
     @freq.setter
     def freq(self, data):
-        self._freqObj.data = np.array(data)
+        self.set_freq(data)
+
+
+    def get_time(self, *args, **kwargs):
+        data = self._timeObj.data
+        index = [slice(None) for i in range(data.ndim)]
+        # convert time to index for float input
+        for ind, arg in enumerate(args):
+            if ind is 0 and type(arg) is float:
+                arg = self.timeValues(arg)
+            try:
+                index[-1-ind] = arg
+            except:
+                pass
+        return data[index]
+        
+    def get_freq(self, *args, **kwargs):
+        data = self._freqObj.data
+        index = [slice(None) for i in range(data.ndim)]
+        # convert frequency to index for float input
+        for ind, arg in enumerate(args):
+            if ind is 0 and type(arg) is float:
+                arg = self.freqValues(arg)
+            try:
+                index[-1-ind] = arg
+            except:
+                pass
+        return data[index]
+
+    def set_time(self, data, *args, **kwargs):
+        self._timeObj.data = np.array(data)
+        self._isValidTime = True
+        self._isValidFreq = False
+        
+    def set_freq(self, data, *args, **kwargs):
+        self._timeObj.data = np.array(data)
         self._isValidFreq = True
         self._isValidTime = False
-    
-    @property
-    def freqVector(self):
+
+    def freqValues(self, value=None):
         if not self._isValidFreq:
-            self.sync()
+            self._sync()
         if self._isValidFreq:
             if self._freqObj._isEvenTimeDomain:
-                return np.linspace(0, self.samplingRate/2., self._freqObj.nBins)
+                linindex = np.linspace(0, self.samplingRate/2., self.nBins)
             else:
-                return np.linspace(0, self.samplingRate/2. * (1 - 1/(2.*self._freqObj.nBins)), self._freqObj.nBins)
-
-    @property
-    def timeVector(self):
+                linindex = np.linspace(0, self.samplingRate/2. * (1 - 1/(2.*self.nBins)), self.nBins)
+        if value:
+            return (np.abs(linindex - value)).argmin()
+        else:
+            return linindex
+            
+            
+    def timeValues(self, value=None):
         if not self._isValidTime:
-            self.sync()
+            self._sync()
         if self._isValidTime:
-            return np.linspace(0, self._timeObj.nSamples / self.samplingRate, self._timeObj.nSamples, endpoint=False)
+            linindex = np.linspace(0, self.nSamples / self.samplingRate, self.nSamples, endpoint=False)
+        if value:
+            return np.abs(linindex - value).argmin()
+        else:
+            return linindex
 
     @property
     def nSamples(self):
-        n = [0]  # default
         if self._isValidTime:
-            n.append(self._timeObj.nSamples)
-        if self._isValidFreq:
-            n.append(self._freqObj.nSamples)
-        if n.__len__() == 3:
-            # checks for identical results, independent of domain
-            assert n[1] == n[2]
-            return n[1]
-        n = n[::-1]  # revert list
-        return int(n[0]) # use first entry (nBins or 0)
+            n = self._timeObj.nSamples()
+        elif self._isValidFreq:
+            n = self._freqObj.nSamples()
+        else:
+            n = 0
+        return n
     @property
     def nBins(self):
         n = [0]  # default
         if self._isValidTime:
-            n.append(self._timeObj.nBins)
+            n.append(self._timeObj.nBins())
         if self._isValidFreq:
-            n.append(self._freqObj.nBins)
+            n.append(self._freqObj.nBins())
         if n.__len__() == 3:
             # checks for identical results, independent of domain
             assert n[1] == n[2]
             return n[1]
         n = n[::-1]  # revert list
         return int(n[0]) # use first entry (nBins or 0)
-
-        
-    def get_time(self, *args, **kwargs):
-        index = self._calculate_index(*args, domain='t', **kwargs)
-        return self._timeObj.data[index]
-        
-    def get_freq(self, *args, **kwargs):
-        index = self._calculate_index(*args, domain='f', **kwargs)
-        return self._freqObj.data[index]
-        
-    def _calculate_index_time(self, *args, **kwargs):
-        try:
-            t = kwargs['t']
-        except:
-            try:
-                t = args[0]
-            except:
-                return [Ellipsis]
-        return [np.argmin(np.abs(self.timeVector - t))]
-
-    def _calculate_index_freq(self, *args, **kwargs):
-        try:
-            f = kwargs['f']
-        except:
-            try:
-                f = args[0]
-            except:
-                return [Ellipsis]
-        return [np.argmin(np.abs(self.freqVector - f))]
-    
-    def _calculate_index(self, *args, **kwargs):
-        if kwargs['domain'][0] is 't':
-            index = self._calculate_index_time(*args, **kwargs)
-        elif kwargs['domain'][0] is 'f':
-            index = self._calculate_index_freq(*args, **kwargs)
-        else:
-            print 'FAIL'
-        try:
-            index.insert(0, kwargs['channel'])
-        except:
-            pass
-            # print 'no channel'
-        index.insert(0, Ellipsis)
-        return index
         
 class SpatialAudio(Audio):
     coordinates = Coordinates()
-
-    def _calculate_index(self, *args, **kwargs):
-        index = super(SpatialAudio, self)._calculate_index(*args, **kwargs)
-        try:
-            index = index.insert(0, kwargs['point'])
-        except:
-            pass
-            # print 'no point'
-        return index
-    
-    # @property
-    # def coordinates(self):
-    #     return self._coordinates
-    # @coordinates.setter
-    # def coordinates(self, value):
-    #     self._coordinates = value
-    #     self._coordinates.update_simplices()
 
 class SOFA_Audio(SpatialAudio):
     
@@ -446,7 +389,7 @@ class SOFA_Audio(SpatialAudio):
         self.samplingRate = h5['Data.SamplingRate'][:]
         self.time = h5['Data.IR'][:]        
         self.coordinates = self._position2coordinates(h5['SourcePosition'])
-        self.sync()
+        self._sync()
         # vis.BalloonGUI()
 
     def _position2coordinates(self, pos):
@@ -457,17 +400,15 @@ class SOFA_Audio(SpatialAudio):
         c.sph = np.vstack((r,t,p)).T
         return c
 
-
 ## TEST FUNCTIONS
-
-TEST_DIMENSIONS = 10
+TEST_DIMENSIONS = [2,10]
 class TestSOFA_Audio(unittest.TestCase):
     def test_load(self):
         sofa = SOFA_Audio('/Volumes/Macintosh_HD/Users/pollow/Projekte/Python/audiotools/test.sofa')
 
     def test_more(self):
         pass
-        
+
 class TestSpatialAudio(unittest.TestCase):
     def test_create_spatialaudio(self):
         a = SpatialAudio()
@@ -475,155 +416,260 @@ class TestSpatialAudio(unittest.TestCase):
     def test_coordinates(self):
         a = SpatialAudio()
         a.coordinates = Coordinates()
-    
+
     def test_time_channel(self):
         a = SpatialAudio()
         ch = 1
         a.coordinates = Coordinates()
         a.time = np.random.rand(10,5,3)
-        time = a.get_time(channel=ch)
+        time = a.get_time(slice(None),ch)
         assert np.allclose(time, a.time[:,ch,:])
-        
+
+class TestAudioIndexing(unittest.TestCase):
+
+    def test_size_correct(self):
+        a = Audio()
+        a.time = np.random.rand(4,8,16)
+
+    def test_compare_channel(self):
+        a = Audio()
+        ch = 4
+        a.time = np.random.rand(5,10,15)
+        # print a.time[:,ch,:].shape
+        # print a.get_time(channel=ch).shape
+        assert np.allclose(a.time[:,ch,:], a.get_time(slice(None),ch))
+
+    def test_compare_point(self):
+        a = Audio()
+        p = 7
+        a.time = np.random.rand(10,20,30)
+        # print a.time[p,:,:].shape
+        # print a.get_time(point=p).shape
+        assert np.allclose(a.time[p,:,:], a.get_time(slice(None), slice(None), p))
+
+
 class TestAudio(unittest.TestCase):
+
     def test_Audio(self):
         a = Audio()
-        
+
     def test_Audio_equal(self):
         a = Audio()
-        a.time = np.random.rand(TEST_DIMENSIONS)
+        a.time = np.random.rand(*TEST_DIMENSIONS)
         b = Audio()
         b.time = a.time
         assert np.allclose(a.freq, b.freq)
-        
-    def test_timeVector_even(self):
+
+    def test_timeValues_even(self):
         a = Audio()
-        a.time = np.random.rand(10)
+        a.time = np.random.rand(1,10)
         a.samplingRate = 10
-        assert np.allclose(a.timeVector, np.linspace(0,1,10,endpoint=False))
-    def test_timeVector_odd(self):
+        assert np.allclose(a.timeValues(), np.linspace(0,1,10,endpoint=False))
+    def test_timeValues_odd(self):
         a = Audio()
-        a.time = np.random.rand(11)
+        a.time = np.random.rand(1,11)
         a.samplingRate = 10
-        assert np.allclose(a.timeVector, np.linspace(0,1.1,11,endpoint=False))
-    def test_freqVector_even(self):
+        assert np.allclose(a.timeValues(), np.linspace(0,1.1,11,endpoint=False))
+    def test_freqValues_even(self):
         a = Audio()
-        a.time = np.random.rand(10)
+        a.time = np.random.rand(1,10)
         a.samplingRate = 10
-        assert np.allclose(a.freqVector, np.linspace(0,5,6,endpoint=True))
-    def test_freqVector_odd(self):
+        assert np.allclose(a.freqValues(), np.linspace(0,5,6,endpoint=True))
+    def test_freqValues_odd(self):
         a = Audio()
-        a.time = np.random.rand(11)
+        a.time = np.random.rand(1,11)
         a.samplingRate = 10
-        assert np.allclose(a.freqVector, np.linspace(0,5.5,6,endpoint=False))
+        assert np.allclose(a.freqValues(), np.linspace(0,5.5,6,endpoint=False))
     def test_get_time(self):
         a = Audio()
-        a.time = np.random.rand(10)
+        a.time = np.random.rand(1,10)
         a.samplingRate = 10
-        assert np.allclose(a.get_time(t=0.5), a.time[5])
+        assert np.allclose(a.get_time(5), a.time[...,5])
+    def test_get_time_float(self):
+        a = Audio()
+        a.time = np.random.rand(1,10)
+        a.samplingRate = 10
+        assert np.allclose(a.get_time(0.5), a.time[...,5])
     def test_get_freq(self):
         a = Audio()
-        a.time = np.random.rand(10)
-        a.sync()
+        a.time = np.random.rand(1,10)
+        a._sync()
         a.samplingRate = 10
-        assert np.allclose(a.get_freq(f=3.), a.freq[3])
-        
+        assert np.allclose(a.get_freq(3), a.freq[...,3])
+    def test_get_freq_float(self):
+        a = Audio()
+        a.time = np.random.rand(1,10)
+        a._sync()
+        a.samplingRate = 10
+        assert np.allclose(a.get_freq(3.), a.freq[...,3])
+
+    def test_get_nSamples(self):
+        a = Audio()
+        a.time = np.random.rand(*TEST_DIMENSIONS)
+        assert a.nSamples == TEST_DIMENSIONS[-1]
+
+class TestTime(unittest.TestCase):
+    """
+    Class for time domain data.
+    """  
+    def test_time(self):
+        time = Time()
+    def test_time_data(self):
+        time = Time()
+        time.data = np.random.randn(2,10)
+        assert time.data.shape == (2,10)
+    def test_time_data_list(self):
+        data = [1.,0.,0.,0.]
+        time = Time()
+        time.data = np.array(data)
+        assert np.all(time.data == data)
+    def test_time_nSamples(self):
+        time = Time()
+        time.data = np.random.randn(2,10)
+        assert time.nSamples() == 10
+    def test_time_nBins(self):
+        time = Time()
+        time.data = np.random.randn(2,10)
+        assert time.nBins() == 6
+    def test_time_fft(self):
+        time = Time()
+        freq = time.fft()
+        assert type(freq) is Freq
+    def test_time_fft_example(self):
+        time = Time()
+        time.data = np.array([1.,0.,0.,0.])
+        freq = time.fft()
+        assert np.allclose(freq.data, [1.,1.,1.])
+
+class TestFreq(unittest.TestCase):  
+    """
+    Class for frequency domain data.
+    """  
+    def test_freq(self):
+        freq = Freq()
+    def test_freq_data(self):
+        freq = Freq()
+        freq.data = np.random.randn(2,9)
+        assert freq.data.shape == (2,9)
+    def test_freq_data_list(self):
+        data = [1.,0.,0.,0.]
+        freq = Freq()
+        freq.data = np.array(data)
+        assert np.all(freq.data == data)
+    def test_freq_nSamples(self):
+        freq = Freq()
+        freq.data = np.random.randn(2,9)
+        assert freq.nSamples() == 16
+    def test_freq_nBins(self):
+        freq = Freq()
+        freq.data = np.random.randn(2,9)
+        assert freq.nBins() == 9
+    def test_freq_ifft(self):
+        freq = Freq()
+        time = freq.ifft()
+        assert type(time) is Time
+    def test_freq_ifft_example(self):
+        freq = Freq()
+        freq.data = np.array([1.,1.,1.])
+        time = freq.ifft()
+        assert np.allclose(time.data, [1.,0.,0.,0.])
+
+
 class TestFFT(unittest.TestCase):
+
     def test_fft(self):
         a = Time()
-        a.data = np.random.rand(TEST_DIMENSIONS)
+        a.data = np.random.rand(*TEST_DIMENSIONS)
         a2 = a.fft()
         # assert type(a2) == Freq  # works only in python3
     def test_fft_lengths(self):
         a = Time()
-        a.data = np.random.rand(TEST_DIMENSIONS)
+        a.data = np.random.rand(*TEST_DIMENSIONS)
         b = a.fft()
-
     def test_fft_even(self):
         a = Time()
-        a.data = np.random.rand(TEST_DIMENSIONS)
+        a.data = np.random.rand(*TEST_DIMENSIONS)
         c = a.fft()
         b = a.fft().ifft()
         assert np.allclose(a.data, b.data)
-
     def test_fft_odd(self):
         a = Time()
-        a.data = np.random.rand(TEST_DIMENSIONS + 1)
+        dim = TEST_DIMENSIONS
+        dim[-1] += 1
+        a.data = np.random.rand(*dim)
         b = a.fft().ifft()
         assert np.allclose(a.data, b.data)
-
     def test_fft_power_even(self):
         a = Time()
         a.fft = a.fft_power
-        a.data = np.random.rand(TEST_DIMENSIONS)
+        a.data = np.random.rand(*TEST_DIMENSIONS)
+        # print a.data
         b = a.fft().ifft()
+        # print b.data
         assert np.allclose(a.data, b.data)
-    
-    
     def test_fft_power_odd(self):
         a = Time()
         a.fft = a.fft_power
-        a.data = np.random.rand(TEST_DIMENSIONS + 1)
+        dim = TEST_DIMENSIONS
+        dim[-1] += 1
+        a.data = np.random.rand(*dim)
         b = a.fft().ifft()
         assert np.allclose(a.data, b.data)
-    
-    
-        
     def test_sync_time(self):
         a = Audio()
-        a.time = np.random.rand(TEST_DIMENSIONS)
+        a.time = np.random.rand(*TEST_DIMENSIONS)
         assert a._isValidTime
-        a.sync()
+        a._sync()
         assert a._isValidFreq and a._isValidTime
     def test_sync_freq(self):
-        a = Audio()
-        a.freq = np.random.rand(TEST_DIMENSIONS/2 + 1)
+        a = Audio()        
+        dim = TEST_DIMENSIONS
+        dim[-1] /= 2
+        dim[-1] += 1
+        a.freq = np.random.rand(*dim)
         assert a._isValidFreq
-        a.sync()
+        a._sync()
         assert a._isValidTime and a._isValidFreq
+
 class TestTimeFreq(unittest.TestCase):
     def test_timeObj(self):
         a = Time()
     def test_freqObj(self):
         a = Freq()
-
     def test_timeObj_data(self):
         a = Time()
-        t = np.random.rand(TEST_DIMENSIONS)
+        t = np.random.rand(*TEST_DIMENSIONS)
         a.data = t
         assert (a.data == t).all()
-
     def test_freqObj_data(self):
         a = Freq()
-        f = np.random.rand(TEST_DIMENSIONS)
+        f = np.random.rand(*TEST_DIMENSIONS)
         a.data = f
         assert (a.data == f).all()
-
     def test_timeObj_nSamples(self):
         a = Time()
-        a.data = np.random.rand(TEST_DIMENSIONS)
-        assert a.nSamples == TEST_DIMENSIONS
-
+        a.data = np.random.rand(*TEST_DIMENSIONS)
+        assert a.nSamples() == TEST_DIMENSIONS[-1]
     def test_timeObj_nBins(self):
         a = Time()
-        a.data = np.random.rand(TEST_DIMENSIONS)
-        target = TEST_DIMENSIONS // 2 + 1
-        assert a.nBins == target
-                
+        dim = TEST_DIMENSIONS
+        a.data = np.random.rand(*dim)
+        assert a.nBins() == dim[-1] // 2 + 1
     def test_freqObj_nSamples(self):
         a = Freq()
-        a.data = np.random.rand(TEST_DIMENSIONS)
-        target = (TEST_DIMENSIONS - 1) * 2
+        dim = TEST_DIMENSIONS
+        a.data = np.random.rand(*dim)
+        dim[-1] = (TEST_DIMENSIONS[-1] - 1) * 2
         if not a._isEvenTimeDomain:
-            target += 1
-        assert a.nSamples == target
-
+            dim[-1] += 1
+        assert a.nSamples() == dim[-1]
     def test_freqObj_nBins(self):
         a = Freq()
-        a.data = np.random.rand(TEST_DIMENSIONS)
-        target = TEST_DIMENSIONS
-        assert a.nBins == target
-                
-        
+        dim = TEST_DIMENSIONS
+        a.data = np.random.rand(*dim)
+        assert a.nBins() == dim[-1]
+
+
 class TestTransform(unittest.TestCase):
     def test_transforms(self):
         x1, y1, z1 = np.random.randn(3)
@@ -631,9 +677,9 @@ class TestTransform(unittest.TestCase):
         self.assertAlmostEqual(x1, x2)
         self.assertAlmostEqual(y1, y2)
         self.assertAlmostEqual(z1, z2)
-        
+
 class TestCoordinates(unittest.TestCase):
-    
+
     def test_createInstance(self):
         c = Coordinates()
 
@@ -737,12 +783,6 @@ class TestCoordinates(unittest.TestCase):
         c.update_simplices()
         assert c.simplices.shape == (8,3)
 
-    # def test_wrong_input():
-    #     # todo
-    #     pass
-
-    def test_input_cart(self):
-        pass
 
 if __name__ == '__main__':
     unittest.main()
