@@ -402,12 +402,12 @@ class SOFA_Audio(SpatialAudio):
 
 ## TEST FUNCTIONS
 TEST_DIMENSIONS = [2,10]
-class TestSOFA_Audio(unittest.TestCase):
-    def test_load(self):
-        sofa = SOFA_Audio('/Volumes/Macintosh_HD/Users/pollow/Projekte/Python/audiotools/test.sofa')
+# class TestSOFA_Audio(unittest.TestCase):
+#     def test_load(self):
+#         sofa = SOFA_Audio('/Volumes/Macintosh_HD/Users/pollow/Projekte/Python/audiotools/test.sofa')
 
-    def test_more(self):
-        pass
+#     def test_more(self):
+#         pass
 
 class TestSpatialAudio(unittest.TestCase):
     def test_create_spatialaudio(self):
